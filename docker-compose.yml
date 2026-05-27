@@ -50,7 +50,7 @@ services:
       MYSQL_USER: products
       MYSQL_PASSWORD: products
     ports:
-      - "3306:3306"
+      - "3307:3306"
     command: --default-authentication-plugin=mysql_native_password
     volumes:
       - mysql_data:/var/lib/mysql
