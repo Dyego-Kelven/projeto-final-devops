@@ -1,0 +1,278 @@
+openapi: 3.0.3
+info:
+  title: Products CRUD API
+  version: 1.0.0
+  description: API para cadastro de produtos (CRUD). Persistência configurável em MySQL (relacional) ou MongoDB (NoSQL).
+servers:
+  - url: http://localhost:8000
+paths:
+  /products:
+    get:
+      summary: Listar produtos
+      operationId: listProducts
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Lista de produtos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      summary: Criar produto
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreate"
+      responses:
+        "201":
+          description: Produto criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /products/{productId}:
+    parameters:
+      - in: path
+        name: productId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Buscar produto por ID
+      operationId: getProduct
+      responses:
+        "200":
+          description: Produto encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Substituir produto (PUT)
+      operationId: replaceProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductReplace"
+      responses:
+        "200":
+          description: Produto atualizado (substituição)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    patch:
+      summary: Atualizar parcialmente produto (PATCH)
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPatch"
+      responses:
+        "200":
+          description: Produto atualizado (parcial)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      summary: Remover produto
+      operationId: deleteProduct
+      responses:
+        "204":
+          description: Produto removido
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: "Conflito (ex.: SKU duplicado)"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: not_found
+        message:
+          type: string
+          example: Produto não encontrado
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+    ProductBase:
+      type: object
+      additionalProperties: false
+      required: [name, price]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Teclado mecânico
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+          example: Switch blue, ABNT2
+        price:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          multipleOf: 0.01
+          example: 199.90
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: BRL
+          example: BRL
+        sku:
+          type: string
+          nullable: true
+          maxLength: 64
+          example: TEC-001
+        stock:
+          type: integer
+          minimum: 0
+          default: 0
+          example: 10
+        active:
+          type: boolean
+          default: true
+          example: true
+    ProductCreate:
+      allOf:
+        - $ref: "#/components/schemas/ProductBase"
+    ProductReplace:
+      allOf:
+        - $ref: "#/components/schemas/ProductBase"
+    ProductPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        price:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          multipleOf: 0.01
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        sku:
+          type: string
+          nullable: true
+          maxLength: 64
+        stock:
+          type: integer
+          minimum: 0
+        active:
+          type: boolean
+    Product:
+      allOf:
+        - $ref: "#/components/schemas/ProductBase"
+        - type: object
+          additionalProperties: false
+          required: [id, createdAt, updatedAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    ProductList:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+        offset:
+          type: integer
+          minimum: 0

@@ -1,0 +1,74 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  api-prod:
+    build: .
+    profiles:
+      - prod
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      LOG_LEVEL: info
+      WEB_CONCURRENCY: 2
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    command: ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: products
+      MYSQL_USER: products
+      MYSQL_PASSWORD: products
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mysql_data:
+  mongo_data:
